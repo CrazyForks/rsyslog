@@ -421,27 +421,45 @@ static rsRetVal setNetstrmDrvrCAExtraFiles(void __attribute__((unused)) * pVal, 
     FILE *fp;
     char *token;
     int error = 0;
+    char *valCopy = NULL;
+
     free(loadConf->globals.pszNetstrmDrvrCAExtraFiles);
 
-    token = strtok((char *)pNewVal, ",");
-    // Here, fopen per strtok ...
-    while (token != NULL) {
-        fp = fopen((const char *)token, "r");
-        if (fp == NULL) {
-            LogError(errno, RS_RET_NO_FILE_ACCESS,
-                     "error: netstreamdrivercaextrafiles file '%s' "
-                     "could not be accessed",
-                     token);
-            error = 1;
-        } else {
-            fclose(fp);
+    /* Validate files without modifying the original comma-separated string */
+    if (pNewVal != NULL) {
+        valCopy = strdup((const char *)pNewVal);
+        if (valCopy == NULL) {
+            LogError(errno, RS_RET_OUT_OF_MEMORY, "error: strdup failed in setNetstrmDrvrCAExtraFiles");
+            free(pNewVal);
+            ABORT_FINALIZE(RS_RET_OUT_OF_MEMORY);
         }
-        token = strtok(NULL, ",");
+        token = strtok(valCopy, ",");
+        while (token != NULL) {
+            fp = fopen((const char *)token, "r");
+            if (fp == NULL) {
+                LogError(errno, RS_RET_NO_FILE_ACCESS,
+                         "error: netstreamdrivercaextrafiles file '%s' "
+                         "could not be accessed",
+                         token);
+                error = 1;
+            } else {
+                fclose(fp);
+            }
+            token = strtok(NULL, ",");
+        }
     }
+
     if (!error) {
         loadConf->globals.pszNetstrmDrvrCAExtraFiles = pNewVal;
     } else {
+        /* Validation failed: prevent leak of newly allocated pNewVal */
+        free(pNewVal);
         loadConf->globals.pszNetstrmDrvrCAExtraFiles = NULL;
+    }
+
+finalize_it:
+    if (valCopy != NULL) {
+        free(valCopy);
     }
     RETiRet;
 }
