@@ -965,7 +965,7 @@ static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED vo
     sb.cap = 1024;
     memcpy(sb.buf, imhttp_up_metric, imhttp_up_len);
     sb.len = imhttp_up_len;
-    sb.buf[sb.len] = '\\0';
+    sb.buf[sb.len] = '\0';
 
     rsRetVal ret = statsobj.GetAllStatsLines(prom_stats_collect, &sb, statsFmt_Prometheus, 0);
     if (ret != RS_RET_OK) {
