@@ -958,6 +958,7 @@ static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED vo
     if (prom_stats_collect(&sb, imhttp_up_metric) != RS_RET_OK) {
         LogError(0, RS_RET_OUT_OF_MEMORY, "imhttp: failed to allocate initial buffer for statistics");
         mg_printf(conn, "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
+        free(sb.buf);
         return 500;
     }
 
