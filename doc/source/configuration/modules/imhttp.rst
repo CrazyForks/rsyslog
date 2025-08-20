@@ -357,9 +357,8 @@ text exposition format. The endpoint provides counters such as
 ``imhttp_submitted_total``, ``imhttp_failed_total`` and
 ``imhttp_discarded_total``.
 
-The handler streams data without a ``Content-Length`` header and closes
-the connection, which most Prometheus scrapers handle. Proxies or load
-balancers must allow such responses. An ``imhttp_up`` gauge is exported
+The handler sends a ``Content-Length`` header and closes the connection.
+Proxies or load balancers must allow such responses. An ``imhttp_up`` gauge is exported
 alongside the full rsyslog statistics. Name collisions with other
 exporters are unlikely but should be documented in monitoring setups.
 To expose only the metrics endpoint, load the module without configuring

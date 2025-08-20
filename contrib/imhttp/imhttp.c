@@ -949,7 +949,24 @@ static rsRetVal prom_stats_collect(void *usrptr, const char *line) {
 }
 
 static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED void *cbdata) {
-    struct stats_buf sb = {.buf = NULL, .len = 0, .cap = 0};
+    struct stats_buf sb;
+    const char *imhttp_up_metric =
+        "# HELP imhttp_up Indicates if the imhttp module is operational (1 for up, 0 for down).\n"
+        "# TYPE imhttp_up gauge\n"
+        "imhttp_up 1\n";
+    const size_t imhttp_up_len = strlen(imhttp_up_metric);
+
+    sb.buf = malloc(1024);
+    if (sb.buf == NULL) {
+        LogError(0, RS_RET_OUT_OF_MEMORY, "imhttp: failed to allocate initial buffer for statistics");
+        mg_printf(conn, "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
+        return 500;
+    }
+    sb.cap = 1024;
+    memcpy(sb.buf, imhttp_up_metric, imhttp_up_len);
+    sb.len = imhttp_up_len;
+    sb.buf[sb.len] = '\\0';
+
     rsRetVal ret = statsobj.GetAllStatsLines(prom_stats_collect, &sb, statsFmt_Prometheus, 0);
     if (ret != RS_RET_OK) {
         LogError(0, ret, "imhttp: failed to retrieve statistics");
@@ -961,13 +978,10 @@ static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED vo
     mg_printf(conn,
               "HTTP/1.1 200 OK\r\n"
               "Content-Type: text/plain; version=0.0.4; charset=utf-8\r\n"
+              "Content-Length: %zu\r\n"
               "Connection: close\r\n"
-              "\r\n");
-
-    mg_printf(conn,
-              "# HELP imhttp_up Indicates if the imhttp module is operational (1 for up, 0 for down).\n"
-              "# TYPE imhttp_up gauge\n"
-              "imhttp_up 1\n");
+              "\r\n",
+              sb.len);
 
     mg_write(conn, sb.buf, sb.len);
     free(sb.buf);
