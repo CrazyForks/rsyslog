@@ -950,24 +950,25 @@ static rsRetVal prom_stats_collect(void *usrptr, const char *line) {
 
 static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED void *cbdata) {
     struct stats_buf sb = {.buf = NULL, .len = 0, .cap = 0};
+    rsRetVal ret = RS_RET_OK;
+    int http_status = 200;
     const char *imhttp_up_metric =
         "# HELP imhttp_up Indicates if the imhttp module is operational (1 for up, 0 for down).\n"
         "# TYPE imhttp_up gauge\n"
         "imhttp_up 1\n";
 
-    if (prom_stats_collect(&sb, imhttp_up_metric) != RS_RET_OK) {
+    ret = prom_stats_collect(&sb, imhttp_up_metric);
+    if (ret != RS_RET_OK) {
         LogError(0, RS_RET_OUT_OF_MEMORY, "imhttp: failed to allocate initial buffer for statistics");
-        mg_printf(conn, "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
-        free(sb.buf);
-        return 500;
+        http_status = 500;
+        goto finalize;
     }
 
-    rsRetVal ret = statsobj.GetAllStatsLines(prom_stats_collect, &sb, statsFmt_Prometheus, 0);
+    ret = statsobj.GetAllStatsLines(prom_stats_collect, &sb, statsFmt_Prometheus, 0);
     if (ret != RS_RET_OK) {
         LogError(0, ret, "imhttp: failed to retrieve statistics");
-        mg_printf(conn, "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
-        free(sb.buf);
-        return 500;
+        http_status = 500;
+        goto finalize;
     }
 
     mg_printf(conn,
@@ -979,8 +980,13 @@ static int prometheus_metrics_handler(struct mg_connection *conn, ATTR_UNUSED vo
               sb.len);
 
     mg_write(conn, sb.buf, sb.len);
+
+finalize:
+    if (http_status != 200) {
+        mg_printf(conn, "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n");
+    }
     free(sb.buf);
-    return 200; /* HTTP 200 OK */
+    return http_status;
 }
 
 
