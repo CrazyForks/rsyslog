@@ -930,9 +930,9 @@ struct stats_buf {
 static rsRetVal prom_stats_collect(void *usrptr, const char *line) {
     struct stats_buf *sb = (struct stats_buf *)usrptr;
     const size_t line_len = strlen(line);
-    if (sb->len + line_len + 1 >= sb->cap) {
+    if (sb->len + line_len >= sb->cap) {
         size_t newcap = sb->cap ? sb->cap * 2 : 1024;
-        while (newcap <= sb->len + line_len + 1) {
+        while (newcap <= sb->len + line_len) {
             newcap *= 2;
         }
         char *tmp = realloc(sb->buf, newcap);
